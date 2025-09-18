@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React from "react";
 
 /* ---------- Modelo ---------- */
 type Item = { id: number; titulo: string; detalle: string; url?: string };
 
+// 10 puntos de la guía
 const items: Item[] = [
   {
     id: 1,
@@ -73,11 +74,10 @@ const items: Item[] = [
   },
 ];
 
-/* ---------- Rangos ---------- */
 type Rango = {
   badge: "No apto" | "Condicionado" | "Apto";
-  tono: string; // texto
-  bg: string; // fondo
+  tono: string;
+  bg: string;
   heading: string;
   detail: string;
 };
@@ -127,15 +127,8 @@ function Modal({
 }) {
   if (!open) return null;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      aria-modal="true"
-      role="dialog"
-    >
-      <div
-        className="fixed inset-0 bg-black/30 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px]" onClick={onClose} />
       <div className="relative z-10 w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-lg font-semibold">{title}</h3>
@@ -169,32 +162,36 @@ function Modal({
 
 /* ---------- App ---------- */
 export default function App() {
-  const [check, setCheck] = useState<Record<number, boolean>>({});
-  const [openModal, setOpenModal] = useState(false);
+  // 1 = Sí, 0 = No, undefined = sin contestar
+  const [resp, setResp] = React.useState<Record<number, 1 | 0 | undefined>>({});
+  const [openModal, setOpenModal] = React.useState(false);
 
   const total = items.length;
 
-  const cumplidos = useMemo(
-    () => items.reduce((acc, it) => acc + (check[it.id] ? 1 : 0), 0),
-    [check]
+  const respondidas = React.useMemo(
+    () => items.reduce((a, i) => a + (resp[i.id] !== undefined ? 1 : 0), 0),
+    [resp]
+  );
+  const puntos = React.useMemo(
+    () => items.reduce((a, i) => a + (resp[i.id] === 1 ? 1 : 0), 0),
+    [resp]
   );
 
-  const data = rango(cumplidos, total);
+  const data = rango(puntos, total);
 
-  const toggle = (id: number) =>
-    setCheck((prev) => ({ ...prev, [id]: !prev[id] }));
+  const setValor = (id: number, val: 1 | 0) =>
+    setResp((prev) => ({ ...prev, [id]: val }));
 
   const reiniciar = () => {
-    setCheck({});
+    setResp({});
     setOpenModal(false);
   };
 
   const exportarCSV = () => {
-    const encabezados = ["Punto", "Cumple (1/0)", "Notas"];
+    const encabezados = ["Punto", "Respuesta (1=Sí,0=No)"];
     const filas = items.map((i) => [
       `${i.id}. ${i.titulo}`.replace(/;/g, ","),
-      check[i.id] ? "1" : "0",
-      "",
+      resp[i.id] ?? "",
     ]);
     const csv = [encabezados, ...filas].map((r) => r.join(";")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], {
@@ -208,14 +205,21 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Abrir automáticamente cuando completes los 10 puntos
+  // Abrir modal al terminar de responder TODAS
   React.useEffect(() => {
-    if (cumplidos === total && total > 0) setOpenModal(true);
-  }, [cumplidos, total]);
+    if (respondidas === total && total > 0) {
+      setOpenModal(true);
+    }
+  }, [respondidas, total]);
 
   return (
     <>
-      {/* Fondo gris oscuro definido en index.css */}
+      {/* Fondo gris más claro */}
+      <div
+        className="fixed inset-0 -z-10 bg-gradient-to-b from-neutral-800 to-neutral-700"
+        aria-hidden="true"
+      />
+
       <main className="mx-auto max-w-3xl p-6">
         {/* Header */}
         <header className="mb-6 flex items-center justify-between">
@@ -253,38 +257,50 @@ export default function App() {
           </div>
         </header>
 
-        {/* Estado superior */}
+        {/* Estado */}
         <div className="mb-3 text-sm text-white/80">
-          Cumplidos: <span className="font-semibold">{cumplidos}</span> / {total}
+          Contestadas: <span className="font-semibold">{respondidas}</span> / {total}
         </div>
 
-        {/* Lista */}
+        {/* Preguntas */}
         <div className="space-y-4">
           {items.map((it) => (
             <div key={it.id} className="rounded-xl bg-white/95 p-4 shadow">
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-5 w-5"
-                  checked={!!check[it.id]}
-                  onChange={() => toggle(it.id)}
-                />
-                <div className="flex-1">
-                  <p className="font-medium">
-                    {it.id}. {it.titulo}
-                  </p>
-                  <p className="mt-1 text-sm text-neutral-600">{it.detalle}</p>
-                  {it.url && (
-                    <a
-                      href={it.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-sm font-medium text-black underline underline-offset-4"
-                    >
-                      Abrir portal STPS
-                    </a>
-                  )}
-                </div>
+              <p className="font-medium">
+                {it.id}. {it.titulo}
+              </p>
+              <p className="mt-1 text-sm text-neutral-600">{it.detalle}</p>
+              {it.url && (
+                <a
+                  href={it.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-block text-sm font-medium text-black underline underline-offset-4"
+                >
+                  Abrir portal STPS
+                </a>
+              )}
+              <div className="mt-3 flex gap-6">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name={`q_${it.id}`}
+                    className="h-4 w-4"
+                    checked={resp[it.id] === 1}
+                    onChange={() => setValor(it.id, 1)}
+                  />
+                  <span>Sí</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name={`q_${it.id}`}
+                    className="h-4 w-4"
+                    checked={resp[it.id] === 0}
+                    onChange={() => setValor(it.id, 0)}
+                  />
+                  <span>No</span>
+                </label>
               </div>
             </div>
           ))}
@@ -318,8 +334,12 @@ export default function App() {
         </footer>
       </main>
 
-      {/* Modal de resultado */}
-      <Modal open={openModal} onClose={() => setOpenModal(false)} title="Resultado del diagnóstico">
+      {/* Modal resultado */}
+      <Modal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        title="Resultado del diagnóstico"
+      >
         <div className={`rounded-2xl p-4 ${data.bg}`}>
           <div className="mb-1 flex items-center gap-2 text-sm">
             <span
@@ -327,7 +347,9 @@ export default function App() {
             >
               {data.badge}
             </span>
-            <span className="text-neutral-600">| Total: {cumplidos} / {total}</span>
+            <span className="text-neutral-600">
+              | Total: {puntos} / {total}
+            </span>
           </div>
           <p className={`mb-2 font-semibold ${data.tono}`}>{data.heading}</p>
           <p className="text-sm text-neutral-800">{data.detail}</p>
@@ -336,4 +358,5 @@ export default function App() {
     </>
   );
 }
+
 
