@@ -216,7 +216,7 @@ export default function App() {
     <>
       {/* Fondo gris más claro */}
       <div
-        className="fixed inset-0 -z-10 bg-gradient-to-b from-neutral-800 to-neutral-700"
+        className="fixed inset-0 -z-10 bg-gradient-to-b from-neutral-800 to-neutral-500"
         aria-hidden="true"
       />
 
